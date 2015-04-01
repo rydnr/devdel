@@ -1,0 +1,60 @@
+group CachingIsNewStrategyFactory;
+
+@CachingIsNewStrategyFactory("We start by defining a new class (?<name>.*), which implements (?<iface>.*),(?<comment>.*)")
+new_class(name, iface, comment) ::= <<
+/**
+ * <comment>
+ */
+public class <name> implements <iface> {
+>>
+
+@CachingIsNewStrategyFactory("Obviously, we need a cache.(.*) with a (?<cacheIface>.*).(.*) so let's use (?<cacheImpl>.*)(.*)")
+cache_impl(cacheIface, cacheImpl) ::= <<
+private final <cacheIface> cache = new <cacheImpl>();
+>>
+
+@CachingIsNewStrategyFactory("(.*)we need (.*) to wrap an actual (?<clss>), and we want this class to be immutable(.*)")
+delegate_attr(clss) ::= <<
+private final <clss>;
+
+/**
+ * Creates a new {code CachingIsNewStrategy}, delegating to the given {@link <class>}.
+ * @param delegate must not be {@literal null}.
+ */
+public CachingIsNewStrategyFactory(<clss> delegate) {
+    Assert.notNull(delegate, "<clss> delegate must not be null!");
+    this.delegate = delegate;
+}
+>>
+
+@CachingIsNewStrategyFactory("*** getIsNewStrategy")
+getIsNewStrategy_def() ::= <<
+/**
+ * @see org.springframework.data.mapping.model.IsNewStrategyFactory#getIsNewStrategy(java.lang.Class)
+ */
+public IsNewStrategy getIsNewStrategy(Class<?> type) {
+>>
+
+@CachingIsNewStrategyFactory("First, we check whether the cache contains a cached instance associated to the type")
+getIsNewStrategy_cachehit() ::= <<
+<clss> strategy = cache.get(type);
+
+if (strategy != null) {
+    return strategy;
+}
+>>
+
+@CachingIsNewStrategyFactory("If it doesn't, we use our wrapped factory to perform the actual operation.")
+getIsNewStrategy_cachemiss() ::= <<
+IsNewStrategy isNewStrategy = delegate.getIsNewStrategy(type);
+>>
+
+@CachingIsNewStrategyFactory("(.*)we can cache the resulting instance regardless of if it was already in the cache or not.(.*)")
+getIsNewStrategy_caching() ::= <<
+cache.put(type, isNewStrategy);
+>>
+
+@CachingIsNewStrategyFactory("Finally, we just return the new strategy instance.")
+getIsNewStrategy_return() ::= <<
+return isNewStrategy;
+>>
